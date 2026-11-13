@@ -12,7 +12,7 @@ STM32CubeF4 以 Git submodule 方式接入并锁定版本。该软件包内部�
 
 | 组件 | 来源 | 许可 | 当前使用情况 |
 |------|------|------|--------------|
-| STM32CubeF4 v1.28.3（submodule） | STMicroelectronics | 混合许可，具体见 `third_party/STM32CubeF4/LICENSE.md` | 已接入并锁定版本 |
+| STM32CubeF4 v1.28.3（submodule，commit `94cae6e`） | STMicroelectronics | 混合许可，具体见 `third_party/STM32CubeF4/LICENSE.md` | 已接入并锁定版本 |
 | CMSIS Core | Arm | Apache-2.0 | 已使用 |
 | STM32F4 CMSIS Device | Arm / STMicroelectronics | Apache-2.0 | 已使用；包含器件头文件、startup、`system_stm32f4xx.c` 等 |
 | STM32F4 HAL / LL | STMicroelectronics | BSD-3-Clause | 后续 L2 / L3 实验按需使用 |

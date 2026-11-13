@@ -10,7 +10,7 @@
 STM32CubeF4 体积大且上游独立维护；submodule 让本仓库只记录"用哪个版本"，
 不把几万行 vendor 代码混进自己的提交历史。
 
-## STM32CubeF4（已接入，锁定 v1.28.3）
+## STM32CubeF4（已接入，锁定 v1.28.3 / `94cae6e`）
 
 以 git submodule 引入 ST 官方仓库——HAL、LL、CMSIS、startup、FreeRTOS 全部来自这一个来源：
 
@@ -32,10 +32,18 @@ git -C third_party/STM32CubeF4 checkout v1.28.3   # 锁定 release tag
 
 切换 tag → 全量构建验证 → 复查上游 LICENSE 并更新 `THIRD_PARTY_NOTICES.md` → 提交
 
+```bash
+git -C third_party/STM32CubeF4 checkout <new-tag>
+git -C third_party/STM32CubeF4 submodule update --init --recursive
+git add third_party/STM32CubeF4        # 只记录新的 gitlink，diff 很小
+git commit -m "升级 STM32CubeF4 到 <new-tag>"
+```
+
 ## 规则
 
 - 不直接修改 submodule 内文件；确需补丁时先讨论策略
 
 ## 状态
 
-✅ 已接入 v1.28.3（2026-08）
+✅ 已接入 v1.28.3（commit `94cae6e`，2026-08）
+✅ 2026-11-13 修正：此前 vendor 源码被误当普通文件提交，现已改为真正的 submodule
