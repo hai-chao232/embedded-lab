@@ -74,13 +74,3 @@ ninja -C build <experiment_target>   # 例如 exp001_gpio_output
 # 构建（如有必要）+ OpenOCD 烧录 + verify + reset
 ninja -C build flash_<experiment_target>   # 例如 flash_exp001_gpio_output
 ```
-
-等价配置入口为 `cmake -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake`。
-
-烧录链路统一为：`ELF → scripts/flash.sh → OpenOCD → ST-LINK → SWD → STM32`；
-板级 OpenOCD 配置归 `platform/<board>/` 管理，实验 README 记录本实验 target 和验证结果。
-
-## 路线
-
-- 学习路线与实验清单（进度唯一权威）：`ROADMAP.md`
-- 每个实验的 README 模板：`docs/experiment_template.md`

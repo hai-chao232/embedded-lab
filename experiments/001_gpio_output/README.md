@@ -1,8 +1,6 @@
 # 实验 001：gpio_output 点灯
 
 > 上级：[experiments/](../README.md)
->
-> 封口状态：**✅ L1 核心闭环完成（2026-09-29）**
 
 ## 目的
 
@@ -34,13 +32,10 @@ PB0 物理电平
 
 001 只操作 **GPIOB / PB0 / LD1**。
 
-## 最终寄存器配置
+## THINK
 
-| 目标 | 寄存器 / field | 目标值 | 含义 |
-|------|----------------|--------|------|
-| 打开 GPIOB 时钟 | `RCC_AHB1ENR.GPIOBEN` | `1` | GPIOB 获得 AHB1 外设时钟 |
-| PB0 模式 | `GPIOB_MODER[1:0]` | `01` | General-purpose output |
-| PB0 输出类型 | `GPIOB_OTYPER[0]` | `0` | Push-pull |
-| PB0 输出速度 | `GPIOB_OSPEEDR[1:0]` | `00` | Low speed |
-| PB0 上下拉 | `GPIOB_PUPDR[1:0]` | `00` | No pull-up / no pull-down |
-| PB0 输出值 | `GPIOB_ODR[0]` | `1` | HIGH → LD1 ON |
+这个实验从零开始，点亮了 LD1
+
+分析了：读芯片手册、编译链接、CMake 构建、烧录
+
+作为一个实验，最大的收获不是完成了点灯，而是串起来整个软硬件
