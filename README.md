@@ -59,7 +59,8 @@ embedded-lab/
 
 ## 快速开始
 
-工具链：arm-none-eabi-gcc（ARM GNU Toolchain 15.3）、cmake ≥ 3.20、ninja、openocd + ST-Link。
+工具链：arm-none-eabi-gcc（ARM GNU Toolchain 15.3）、cmake ≥ 3.21（presets 用了 `"version": 3` 的 `toolchainFile`）、ninja、openocd + ST-Link。
+`flash_<target>` 走 `scripts/flash.sh`，Windows 上需要 Git Bash 或 MSYS2 的 bash。
 
 ```bash
 # 首次克隆后初始化 submodule（CubeF4 含嵌套 submodule，必须 --recursive）

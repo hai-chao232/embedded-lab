@@ -93,9 +93,11 @@ P0 **有意不包含**以下工程增强，它们被明确安排到 E1，而不�
 
 ---
 
-## E1：工程基线 v1（001 完成后、002 开始前）
+## E1：工程基线 v1（001 完成后、002 开始前）🟡
 
 E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每项增强都必须结合 001 的实际产物理解。
+
+进度：E1.0 ✅ · E1.1 ✅ · E1.2 ⬜ · E1.3 ⬜
 
 ### E1.0 烧录入口
 
@@ -105,6 +107,18 @@ E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每�
 - CMake `flash_<target>` ，用 `$<TARGET_FILE:...>` 传产物，不写死路径
 
 验收：`ninja -C build flash_exp001_gpio_output` 能从干净状态一步烧录并复位
+
+✅ **已完成并端到端验证** — 环境：Windows 11 / xPack OpenOCD 0.12.0-7 / MSYS2 bash / ARM GNU Toolchain 15.3.1
+
+- `ninja -C build flash_exp001_gpio_output` 一步走完构建 + 烧录 + verify + reset。
+- `verified 916 bytes`；elf 为 11468 字节，差额是 section header / 符号表等不进 flash 的部分（留给 E1.2 用 `.map` 拆开）。
+- ST-Link 驱动用 Keil5 自带的 STSW-LINK009 v2.0.2：`ProblemCode 28 → 0`，Service = WinUSB。
+- 烧录逻辑收在 `scripts/flash.sh` 单点，CMake 只传参；实验侧只见 `stm32f446ze_add_flash_target()`，看不到调试器品牌与固件路径。
+- **坑 1**：OpenOCD 0.12 的 `interface/stlink.cfg` 已改用 `adapter driver st-link`（dapdirect 模型），只接受 `jtag/swd/swim`。旧写法 `transport select hla_swd` 报 `Debug adapter doesn't support 'hla_swd' transport`；`interface/stlink-dap.cfg` 与 `transport select dapdirect_swd` 在本版本也均已 deprecated。
+- **坑 2**：直接删掉 `transport select` 那行也能烧通，但 openocd 会兜底并每次打印 `DEPRECATED: auto-selecting transport "swd (dapdirect)"`。必须显式写 `transport select swd`。根因：`target/swj-dp.tcl` 里 `[catch {transport select}]` 要求 transport 必须已有值。
+- **坑 3**：`verify_image` 在 target 未 halt 时会报 `not halted (start target algo)` 并回退路径，结果不可信；先 `halt` 再 verify 才是干净比对。
+- **坑 4**：`OPENOCD` 环境变量要写正斜杠（`D:/app/...`）。该值会传给 MSYS2 bash，反斜杠被当转义符吃掉，`command -v` 就失败。
+- **坑 5**：仓库 `core.autocrlf=true`，checkout 出的 `.sh` 会变 CRLF，bash 报 `$'\r': command not found`。已用根目录 `.gitattributes` 的 `*.sh text eol=lf` 解决，且必须与 `flash.sh` 同批入库。
 
 ### E1.1 编译告警基线
 
@@ -122,6 +136,25 @@ E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每�
 - 暂不默认启用 `-Werror`。
 - 后续更严格 warning 在 E2 再评估，不一次性堆满 GCC 选项。
 
+✅ **已完成** — 环境：同上
+
+实现方式：`cmake/warnings.cmake` 定义 `embedded_warnings` INTERFACE 目标，由 platform 传递给各实验；根 `CMakeLists.txt` 中 `include(cmake/warnings.cmake)` 必须在 `add_subdirectory()` 之前，顺序不可调换。
+
+实测证据（干净构建，`build.ninja` 实际 FLAGS）：
+
+| 编译对象 | 实际选项 |
+|---|---|
+| `main.c`（自有） | `-std=c11 … -fdata-sections -Wall -Wextra -Wpedantic` |
+| `system_stm32f4xx.c`（Cube） | 同上，带三个告警选项 |
+| `startup_stm32f446xx.s`（汇编） | **无告警选项** ← `$<COMPILE_LANGUAGE:C,CXX>` 挡住 |
+
+- 编译期告警 **0 条**；链接期告警 **4 条**（`nosys` stub，预期保留）；elf 11468 字节，与改动前一致，无回归。
+- 三个选项不冗余，用探针文件实测分工：`-Wall` 抓未使用变量，`-Wextra` 抓未使用参数与有/无符号比较，`-Wpedantic` 需写出 GCC 扩展才触发（002 之后常见的是 `__attribute__`、`0b` 字面量）。
+- `$<COMPILE_LANGUAGE:C,CXX>` 的逗号多语言写法需 CMake ≥ 3.15（文档 "Changed in version 3.15"）。本次把 `cmake_minimum_required` 从 3.20 提到 3.21，理由是 presets schema v3 的 `toolchainFile` 需要 3.21 —— 属补旧账，与 E1.1 无关。
+- **那 4 条链接警告的定性**：来自 `--specs=nosys.specs` 的空 syscall 实现，`-Wall` 系列对其无效；且是虚警 —— 警告发出时链接器还没执行 `-Wl,--gc-sections`，而本项目从不调用这些 stub，它们会被回收、不进固件。真正解法是自己实现 syscall（`_write` 重定向到 UART 做 printf），属后续 UART 实验范围；**不要用链接选项压制**，那会同时盖掉真实的 undefined symbol。说明已写在 `platform/stm32f446ze/CMakeLists.txt` 的 `--specs=nosys.specs` 旁。
+- **未验证项（如实记录）**：`common/CMakeLists.txt` 新增的 `target_link_libraries(common INTERFACE embedded_warnings)` 目前**无法验证是否生效** —— `common` 是空壳且不编译任何源文件，001 也没链接它。只能确认配置阶段不报错。等 `common/` 有真实源文件时才会显现，届时须回补验证。
+- **遗留后果**：不带 `-Werror`，带告警的构建仍 `exit=0`。E2 做 CI 时不能靠退出码发现告警，必须 grep 构建日志。
+
 ### E1.2 固件产物与链接分析
 
 构建后自动得到并理解：
@@ -134,6 +167,8 @@ E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每�
 
 重点把 `.map` 和已经学过的 ELF / linker script / `nm` 串起来，而不是只生成文件。
 
+⬜ **未开始** — 已有两个现成对照物：那 4 条 `nosys` 虚警在 `.map` 里应能看到被 `--gc-sections` 回收；`verified 916 bytes` 与 elf 11468 字节的差额可用 `.map` + `size` 拆开。
+
 ### E1.3 Debug / Release 构建模型
 
 建立明确的 Debug / Release preset 或等价配置，理解：
@@ -142,6 +177,8 @@ E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每�
 - `-Og` 与调试体验
 - `-O0 / -Og / -O2 / -Os` 对汇编、代码尺寸和调试行为的影响
 - `NDEBUG` 等 Release 语义
+
+⬜ **未开始** — 遗留问题：当前构建没有 `-g`，001 阶段目标第 6 条（SWD/GDB 查看寄存器、单步和断点）实际只能做到汇编级；`.elf` 有符号表所以 `info reg`、按函数名下断点可用，但源码级断点（`break main.c:29`）和 step/next 不可用（缺 DWARF 行号）。建议 E1.3 的 `-g` 优先做，把 001 第 6 条闭环。
 
 ---
 

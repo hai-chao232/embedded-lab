@@ -1,10 +1,14 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
 project(embedded-lab C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
+
+# 项目级编译告警策略（E1.1）：定义 embedded_warnings，由 platform 传递给所有实验。
+# 必须在 add_subdirectory 之前 include，后面的目录才能链接它。
+include(cmake/warnings.cmake)
 
 # 公共设施与板级平台：所有实验共享，只有一份
 add_subdirectory(common)
