@@ -10,6 +10,14 @@ set(CMAKE_C_EXTENSIONS OFF)
 # 必须在 add_subdirectory 之前 include，后面的目录才能链接它。
 include(cmake/warnings.cmake)
 
+# 项目级固件产物策略（E1.2）：定义 embedded_add_firmware_artifacts，
+# 由各实验显式调用（POST_BUILD 无法经 INTERFACE 库继承，见该文件注释）。
+include(cmake/firmware.cmake)
+
+# 项目级 Debug / Release 构建模型（E1.3）：默认 Debug，显式定义各类型的
+# 优化/调试语义；同样必须在 add_subdirectory 之前，子目录才能继承标志。
+include(cmake/build_type.cmake)
+
 # 公共设施与板级平台：所有实验共享，只有一份
 add_subdirectory(common)
 add_subdirectory(platform)

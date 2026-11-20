@@ -2,12 +2,42 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "stm32f446ze",
-      "displayName": "NUCLEO-F446ZE (arm-none-eabi)",
-      "description": "交叉编译 preset：VS Code CMake Tools 与命令行共用同一套构建逻辑",
+      "name": "stm32f446ze-base",
+      "hidden": true,
+      "displayName": "NUCLEO-F446ZE 公共基底",
+      "description": "交叉编译公共配置：生成器与工具链只写一份，debug/release 继承",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
       "toolchainFile": "${sourceDir}/cmake/arm-none-eabi.cmake"
+    },
+    {
+      "name": "stm32f446ze-debug",
+      "inherits": "stm32f446ze-base",
+      "displayName": "NUCLEO-F446ZE Debug",
+      "description": "日常调试：-Og -g3，源码级断点/单步可用（E1.3）",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "stm32f446ze-release",
+      "inherits": "stm32f446ze-base",
+      "displayName": "NUCLEO-F446ZE Release",
+      "description": "发布构建：-O2 -DNDEBUG；独立目录，与 Debug 产物互不覆盖（E1.3）",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "stm32f446ze-debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "stm32f446ze-release"
     }
   ]
 }

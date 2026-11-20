@@ -43,8 +43,8 @@ embedded-lab/
 ├── CMakeLists.txt          # 构建根入口（实验在此显式登记）
 ├── CMakePresets.json       # VS Code CMake Tools 与命令行共用同一套构建逻辑
 ├── THIRD_PARTY_NOTICES.md  # 第三方组件许可声明
-├── cmake/                  # 交叉编译工具链定义
-├── docs/                   # 板卡 / MCU / Cortex-M 手册与笔记、协议知识、实验模板
+├── cmake/                  # 交叉编译工具链与项目级构建策略
+├── docs/                   # 板卡 / MCU / Cortex-M 手册与笔记、协议知识
 ├── third_party/            # 第三方代码唯一入口（STM32CubeF4，submodule）
 ├── platform/               # 板级粘合层（每块板只有一份：时钟、linker、printf 重定向…）
 ├── experiments/            # 实验（main.c、README、artifacts/ 波形记录）
@@ -66,12 +66,14 @@ embedded-lab/
 # 首次克隆后初始化 submodule（CubeF4 含嵌套 submodule，必须 --recursive）
 git submodule update --init --recursive
 
-# 首次配置 / CMake 发生结构变化后重新配置
-cmake --preset stm32f446ze
+# 首次配置 / CMake 发生结构变化后重新配置（E1.3 起分 Debug / Release）
+cmake --preset stm32f446ze-debug      # 日常调试：-Og -g3 → build/debug
+cmake --preset stm32f446ze-release    # 发布构建：-O2 -DNDEBUG → build/release
 
-# 只构建某个实验
-ninja -C build <experiment_target>   # 例如 exp001_gpio_output
+# 构建全部实验（或 ninja -C build/debug <experiment_target> 只构建一个）
+cmake --build --preset debug
+cmake --build --preset release
 
-# 构建（如有必要）+ OpenOCD 烧录 + verify + reset
-ninja -C build flash_<experiment_target>   # 例如 flash_exp001_gpio_output
+# 构建（如有必要）+ OpenOCD 烧录 + verify + reset（日常烧 Debug 版）
+ninja -C build/debug flash_<experiment_target>   # 例如 flash_exp001_gpio_output
 ```

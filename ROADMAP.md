@@ -39,7 +39,7 @@ P0 的目标不是“做完整工程系统”，而是建立一个**最小、可
 - [x] Cortex-M4F 基础编译 / 链接参数生效。
 - [x] `001_gpio_output` 最小程序可生成 ELF。
 - [x] 已使用 `nm` / `size` 等工具初步分析最小 ELF。
-- [x] 已建立第三方许可、实验模板和实验依据归档规则。
+- [x] 已建立第三方许可。
 
 P0 **有意不包含**以下工程增强，它们被明确安排到 E1，而不是遗忘：
 
@@ -93,11 +93,11 @@ P0 **有意不包含**以下工程增强，它们被明确安排到 E1，而不�
 
 ---
 
-## E1：工程基线 v1（001 完成后、002 开始前）🟡
+## E1：工程基线 v1（001 完成后、002 开始前）✅
 
 E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每项增强都必须结合 001 的实际产物理解。
 
-进度：E1.0 ✅ · E1.1 ✅ · E1.2 ⬜ · E1.3 ⬜
+进度：E1.0 ✅ · E1.1 ✅ · E1.2 ✅ · E1.3 ✅
 
 ### E1.0 烧录入口
 
@@ -167,7 +167,33 @@ E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每�
 
 重点把 `.map` 和已经学过的 ELF / linker script / `nm` 串起来，而不是只生成文件。
 
-⬜ **未开始** — 已有两个现成对照物：那 4 条 `nosys` 虚警在 `.map` 里应能看到被 `--gc-sections` 回收；`verified 916 bytes` 与 elf 11468 字节的差额可用 `.map` + `size` 拆开。
+✅ **已完成** — 环境：同上（CMake 4.4.3 / Ninja 1.13.2）
+
+实现方式：`cmake/firmware.cmake` 定义 `embedded_add_firmware_artifacts(<target>)`，根 CMakeLists 在 `add_subdirectory` 之前 include；001 显式调用一行。函数内做三件事：链接期 `-Wl,-Map` + `-Wl,--print-memory-usage`；POST_BUILD 用 objcopy 生成 `.bin`/`.hex` 并跑 `size`。产物名用 `$<TARGET_FILE_BASE_NAME:...>`，OUTPUT_NAME 改名也不脱节。板级 CMakeLists 未动。
+
+与 E1.1 的模式差异（有意为之）：warnings 靠 platform 自动继承防漏配；产物的 POST_BUILD 命令挂不到 INTERFACE 库上，**无法自动继承**，只能每实验显式一行——新建固件实验必须带这一行，已写进函数注释与 001 的调用处。
+
+工具链加固：`CMAKE_OBJCOPY/OBJDUMP/SIZE/GDB` 由裸名字改为 configure 期 `find_program` 解析绝对路径，并按用途分级校验：objcopy/size 是构建硬依赖（POST_BUILD 用到），缺失 FATAL_ERROR；objdump/gdb 只用于分析/调试，缺失仅 WARNING——精简工具链（不带 gdb）不应被挡在 configure 之外。
+
+**坑（只对"已有构建目录"成立）**：旧版 `set(... CACHE FILEPATH)` 在 cache 里存的是裸名字；find_program 发现变量已有值就视为"已有结果"跳过搜索，旧 cache 的裸名字会被原样保留、永远不解析。全新 build 目录没有旧值，直接 `find_program(CMAKE_OBJCOPY ...)` 是正常搜索的。修法：查找前把 cache 里"非绝对路径"的旧值 `unset(... CACHE)` 清掉，再直接 find_program；不用 FORCE 回填——那会每次 configure 覆写用户 `-D` 指定的路径，破坏 find_program"尊重已有有效值"的语义。
+
+**验证（四条路径实测）**：① 现有 cache 重配置、② 模拟旧版裸名字 cache 重配置、③ `--fresh` 全新配置——三者 cache 均为绝对路径，干净重建 size 仍 916/0/1568、elf 仍 11468 B；④ 屏蔽工具链目录的探针配置：objdump/gdb 缺失只出 2 条 WARNING、configure 正常通过，用户指定的 objcopy 绝对路径被保留。
+
+实测证据（干净构建 + `--clean-first` 全量重建，两次一致）：
+
+| 产物 | 大小 | 说明 |
+|---|---|---|
+| `.elf` | 11468 B | 与 E1.0/E1.1 一致，无回归 |
+| `.bin` | **916 B** | 恰等于 `verified 916 bytes`（data=0，无填充） |
+| `.hex` | 2663 B | 首条扩展地址记录 `:020000040800F2` → 基址 0x08000000 |
+| `.map` | 80553 B | 含 Discarded input sections |
+| size | 916 / 0 / 1568 | text/data/bss 与改动前一致 |
+| memory-usage | ROM 916 B (0.17%) / RAM 1568 B (1.20%) | RAM 含 `._user_heap_stack` 预留 0x600 |
+
+- **闭环 E1.1 的 nosys 虚警定性**：`.map` 的 Discarded input sections 里可见 `.text._close/_lseek/_read/_write`（各 0x10，来自 `libnosys.a`）连同 `.gnu.warning.*` 一起被 `--gc-sections` 回收；libc 的 `_close_r` 等包装也同样被回收。4 条链接警告确认不进固件。
+- **elf 与 flash 差额**：11468 − 916 = 10552 B 为 section header、符号表、`.ARM.attributes` 等不写入 Flash 的部分；`.bin` 只取可加载段。
+- 编译告警 0 条、链接虚警 4 条（预期保留），与 E1.1 记录一致。
+- **未验证项（如实记录）**：本阶段只验证了产物生成与尺寸基线，未把 `.bin`/`.hex` 实际烧录上板（现有 flash 入口仍走 elf）；`--print-memory-usage` 的 RAM 口径含 heap/stack 预留，非运行时真实占用。
 
 ### E1.3 Debug / Release 构建模型
 
@@ -178,7 +204,39 @@ E1 是 P0 的工程化补全点。此时已经有真实可运行 firmware，每�
 - `-O0 / -Og / -O2 / -Os` 对汇编、代码尺寸和调试行为的影响
 - `NDEBUG` 等 Release 语义
 
-⬜ **未开始** — 遗留问题：当前构建没有 `-g`，001 阶段目标第 6 条（SWD/GDB 查看寄存器、单步和断点）实际只能做到汇编级；`.elf` 有符号表所以 `info reg`、按函数名下断点可用，但源码级断点（`break main.c:29`）和 step/next 不可用（缺 DWARF 行号）。建议 E1.3 的 `-g` 优先做，把 001 第 6 条闭环。
+✅ **已完成** — 环境：同上（CMake 4.4.3 / Ninja 1.13.2 / ARM GNU Toolchain 15.3.1）
+
+实现方式（延续项目层策略模式，板级与实验构建逻辑零改动）：
+
+- `cmake/build_type.cmake`：①单配置生成器守卫（多配置生成器直接拒绝，不静默失效）；②默认 Debug（尊重 preset/-D/旧 cache 已有值，不 FORCE）；③类型白名单 Debug/Release（拼错如 `Relase` 会静默套用空标志得到"四不像"固件，配置期即 FATAL_ERROR）；④显式定义 `CMAKE_{C,CXX,ASM}_FLAGS_{DEBUG,RELEASE}`，每次 configure 重置（此处 FORCE 是正确的：语义由本文件单点定义，与工具链文件"cache 是用户可指定的事实"不矛盾；用户临时选项走 `CMAKE_C_FLAGS`）。
+- 语义：**Debug = -Og -g3**（-Og 为调试而优化，优于 -O0 的冗余栈操作；-g3 含宏信息）；**Release = -O2 -DNDEBUG**（不用 -Os/-O3，取舍留待有测量需求时评估；当前无 assert，NDEBUG 属语义声明）。ASM 单独接管：Debug 只加 -g，Release 置空——CMake 默认给 .s 塞 host 取向的 -g / -O3 -DNDEBUG，实测 build.ninja 发现后一并显式覆盖。
+- `CMakePresets.json`：隐藏 base（生成器+工具链写一份）→ `stm32f446ze-debug` / `stm32f446ze-release`，**独立 binaryDir** `build/debug`、`build/release`——单配置生成器若共用目录，切类型会互相覆盖产物且 ninja 全量重编。另加 buildPresets `debug`/`release`。旧 preset 名 `stm32f446ze` 移除，README/注释已同步；`.gitignore` 的 `build-*/` 与 `build/` 已覆盖新目录。
+- 旧 `build/` 根目录缓存（无 CMAKE_BUILD_TYPE）已清理，避免被新默认值静默改义；E1.0–E1.2 的实测记录保留原文不改写。
+
+实测证据（两配置各自干净构建 + `--clean-first` 全量重建，结果一致）：
+
+| 项 | Debug | Release |
+|---|---|---|
+| C FLAGS（build.ninja 实查） | `-Og -g3 -std=c11 …告警三件套` | `-O2 -DNDEBUG -std=c11 …告警三件套` |
+| ASM FLAGS | `-g`（无优化概念） | 空（无 host 默认 -O3 噪声） |
+| text/data/bss | **872 / 0 / 1568** | **872 / 0 / 1568** |
+| .bin | 872 B | 872 B |
+| .elf | **689104 B**（DWARF） | 11424 B |
+| gdb `info line main` | `Line 6 of main.c starts at 0x8000250` ✅ 源码级 | `No line number information` ✅ 预期 |
+
+- **调试信息不占 Flash 的实证**：Debug elf 比 Release 大 ~677 KB（.debug_* 节，readelf 可见 .debug_macro/.debug_str 占大头），但两者 .bin 同为 872 B——DWARF 全在非加载 section。
+- **001 第 6 条源码级调试闭环（构建侧）**：`break main.c:行号`、step/next 所需的 DWARF 行号已具备；上板单步留待下次硬件会话顺手验证。
+- 守卫实测：`-DCMAKE_BUILD_TYPE=Relase` 配置期报错；不带 preset 裸配置默认 Debug；两配置增量构建 `no work to do`；`flash_exp001_gpio_output` 在 debug 目录正常登记。
+- **尺寸基线变更（有意，非回归）**：916 → 872 B。旧基线是"无优化标志"（等效 -O0），新 Debug 的 -Og 做了不碍调试的优化。两配置 .bin 哈希不同（872 B 同长不同内容），烧录时注意烧的是哪个目录。
+- **新发现（记录）**：-g3 使链接器拉入 `libg_nano.a`（带断言的 newlib 变体）而非 `libc_nano.a`，nosys 4 条虚警的来源文件名随之变化，性质不变、仍被 GC 回收；Release 仍走 libc_nano.a。
+- **未验证项（如实记录）**：上板源码级单步/断点、Release 版实际烧录运行；-Og 与 -O2 在本实验恰好同尺寸，不代表一般规律（代码量太小，优化空间有限）。
+
+收尾复查（2026-11-19，全部实证）：
+
+- **libg_nano 归因对照实验坐实**：隔离探针（同一 .c、同 -Og、同 specs，唯一变量 -g3）链接两次——带 -g3 选 `libg_nano.a`，不带选 `libc_nano.a`。机制：gcc 的 `-g` 会向链接器传 `--debug`，newlib 的 nano.specs 据此在带断言的 libg 与不带断言的 libc 之间切换。因此"虚警来源库随构建类型变化"是 -g 的确定性后果，非偶然。
+- 两配置 .map 的 Discarded input sections 均确认：nosys 4 stub（各 0x10）+ `.gnu.warning.*` + libc 侧 `_close_r` 等包装全部被 GC 回收，虚警定性在两配置下同样成立。
+- release 目录 `flash_exp001_gpio_output` 登记正常；`.gitignore` 的 `build/` 已覆盖 `build/debug`、`build/release`；文档无旧命令残留（E1.0 历史记录按原文保留）。
+- 修正 build_type.cmake 两处过时注释（"清空再定义"实际为直接 FORCE；ASM 已由本文件接管），纯注释改动，不影响构建。
 
 ---
 

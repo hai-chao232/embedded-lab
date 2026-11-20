@@ -7,7 +7,7 @@
 #
 # CMake 的 flash_<target> 就是调用它；也可以手工执行：
 #   bash scripts/flash.sh platform/stm32f446ze/openocd.cfg \
-#                         build/experiments/001_gpio_output/exp001_gpio_output.elf
+#                         build/debug/experiments/001_gpio_output/exp001_gpio_output.elf
 #
 # 环境变量：
 #   OPENOCD   指定 openocd 可执行文件（默认从 PATH 找 openocd）
