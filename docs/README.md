@@ -12,4 +12,5 @@
 | `mcu/` | MCU 资料：Datasheet、Reference Manual（RM0390） | 外设归 MCU |
 | `cortex_m/` | 内核资料：用户指南、编程手册 | NVIC / SysTick 归内核 |
 | `protocols/` | 协议知识笔记（i2c / spi / can…） | 通用知识，不绑定实验 |
+| `notes/` | 工程过程笔记（E1 基线、踩坑、实测） | 阶段决策与证据，不绑定单个外设 |
 

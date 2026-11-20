@@ -76,4 +76,6 @@ cmake --build --preset release
 
 # 构建（如有必要）+ OpenOCD 烧录 + verify + reset（日常烧 Debug 版）
 ninja -C build/debug flash_<experiment_target>   # 例如 flash_exp001_gpio_output
+
+# VS Code：先完成上面的 configure，再按 F5（Cortex-Debug + OpenOCD）
 ```

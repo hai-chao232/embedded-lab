@@ -1,0 +1,32 @@
+{
+  // 界面调试入口（E1.3 后续：GUI 调试工作流）
+  // 底层与命令行完全同链路：Cortex-Debug 启动 OpenOCD + arm-none-eabi-gdb。
+  // 板级知识仍只有一份：调试器/工具链路径之外，全部复用 platform 的 openocd.cfg，
+  // 实验/调试配置里不出现调试器品牌细节。
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug exp001 (OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      // Debug 版 elf：-Og -g3，源码级断点/单步（E1.3）
+      "executable": "${workspaceFolder}/build/debug/experiments/001_gpio_output/exp001_gpio_output.elf",
+      "servertype": "openocd",
+      // 与 flash 入口同源：复用同一份 openocd.cfg；OpenOCD 路径写死，不依赖会话环境变量
+      "serverpath": "D:/app/xpack-openocd-0.12.0-7/bin/openocd.exe",
+      // 工具链也固定，避免 PATH 解析到另一版 gdb / objdump
+      "gdbPath": "D:/app/arm-gnu-toolchain-15.3.rel2-mingw-w64-x86_64-arm-none-eabi/bin/arm-none-eabi-gdb.exe",
+      "objdumpPath": "D:/app/arm-gnu-toolchain-15.3.rel2-mingw-w64-x86_64-arm-none-eabi/bin/arm-none-eabi-objdump.exe",
+      "configFiles": [
+        "platform/stm32f446ze/openocd.cfg"
+      ],
+      // launch = 先下载再停在 main；等价于 flash 入口 + attach
+      "runToEntryPoint": "main",
+      "preLaunchTask": "build-debug",
+      // SVD（外设寄存器位域视图）待补：仓库暂无 STM32F446.svd，
+      // 获取后在此加 "svdFile" 指向它，Peripheral 面板即可用
+      "showDevDebugOutput": "none"
+    }
+  ]
+}
