@@ -55,14 +55,6 @@ P0 **有意不包含**以下工程增强，它们被明确安排到 E1，而不�
 
 ## 第一阶段：MCU 底层机制（14 次）
 
-> 顺序设计：
->
-> - 001 首次完成“真实 GPIO → 烧录 → SWD/GDB → 仪器/寄存器验证”，随后执行 E1。
-> - 004 完成后、005 Timer 开始前，完成平台时钟 checkpoint。
-> - DMA 先作为独立能力理解（008），再应用到 ADC / UART（010 / 014）。
-> - UART 走“轮询 → 中断 → ring buffer → DMA”四步。
-> - 007 输入捕获不用信号发生器：第二块 F446ZE 输出 PWM，第一块捕获，LA1010 同时测两块。
-
 | 编号 | 实验 | Level | 依赖 | 硬件 | 状态 |
 |:----:|------|:-----:|------|------|:----:|
 | 001 | gpio_output 点灯 | L1（对比 L2/L3） | P0 | 板载 LED + 调试器（万用表 / LA 可选） | ✅ |
@@ -89,7 +81,6 @@ P0 **有意不包含**以下工程增强，它们被明确安排到 E1，而不�
 3. 使用 CMSIS 寄存器方式完成 GPIO 输出。
 4. 编译、链接并分析固件。
 5. 使用 OpenOCD / ST-LINK 烧录。
-6. 使用 SWD/GDB 查看寄存器、单步和断点。
 
 ---
 
@@ -107,26 +98,6 @@ E1 是 P0 的工程化补全点：001 已经能生成 ELF，E1 把“构建 → 
 | **E1.3 Debug/Release** | 无调试信息，Debug/Release 混用 | `cmake/build_type.cmake` + 两个 preset | Debug `-Og -g3` / Release `-O2 -DNDEBUG`；`build/debug`、`build/release` 分离 |
 
 **为什么先做 E1.0**：没有稳定的烧录入口，后面的告警、产物、构建类型都没有“真实上板”的验证对象；OpenOCD 版本、ST-Link 驱动、bash/CRLF 这些主机侧问题，也越早收进基线越不会污染后续实验。
-
-四条的共同模式：
-
-- **真实问题驱动**：每条都对应 001 已经出现的一个具体不便。
-- **项目层单点**：策略只写一份，实验只表达意图（链接 platform，烧录/产物各一行）。
-- **继承优先**：能自动继承就自动（warnings、build type）；不能继承就显式一行（artifacts）。
-- **证据闭环**：数字、命令、踩坑都记录；详细记录见 [E1 工程基线笔记](docs/notes/E1-engineering-baseline.md)。
-
-关键结果（2026-11-19）：
-
-- 编译 0 告警；链接 4 条 nosys 虚警，`.map` 确认被 `--gc-sections` 回收。
-- Debug：elf 689104 / bin 872 / size 872 / 0 / 1568；Release：elf 11424 / bin 872。
-- Debug `gdb info line main` = `main.c:6 @ 0x8000250`；Release 无行号信息。
-- `-g3` 选 `libg_nano.a`，Release 走 `libc_nano.a`；调试信息不占 Flash。
-
-2026-11-20 补验：
-
-- 上板源码级调试：`break main.c:6`、next、`print/x RCC->AHB1ENR`=0x2、`GPIOB->ODR`=0x1；001 第 6 条闭环。
-- GUI：`.vscode/launch.json` + `tasks.json`，Cortex-Debug 复用 `openocd.cfg`，preLaunchTask 走 `cmake --build --preset debug`。设计上 F5 = 构建 + 下载 + 停在 main；界面侧待首次运行验证。首次/结构变化后仍需先 `cmake --preset stm32f446ze-debug`。
-- 待补：STM32F446.svd；OpenOCD/GDB/objdump 路径目前写死，E2 统一。
 
 留待 E2 / 未验证：
 

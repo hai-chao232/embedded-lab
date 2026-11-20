@@ -15,6 +15,3 @@
 | board | LED/按键引脚定义等板级封装 | ⬜ |
 | linker script | STM32F446ZE 内存布局（512K Flash / 128K SRAM） | ✅ |
 | printf 重定向 | retarget 到板载 ST-Link 虚拟串口（USART3，PD8/PD9） | ⬜ 属 011 UART 实验 |
-
-> 时钟来源从第一天记正确：以后研究 RCC 时会碰到 **HSE crystal 与 HSE bypass 的区别**。
-

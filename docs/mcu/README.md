@@ -5,8 +5,7 @@
 ```
 STM32F446/
 ├── datasheet/           # 数据手册（电气参数、引脚复用）
-├── reference_manual/    # 参考手册（外设寄存器，RM0390）
-└── notes/               # 学习笔记
+└── reference_manual/    # 参考手册（外设寄存器，RM0390）
 ```
 
 - STM32F446 参考手册编号：RM0390
