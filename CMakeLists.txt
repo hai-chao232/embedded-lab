@@ -26,6 +26,8 @@ add_subdirectory(platform)
 set(EXPERIMENTS
   001_gpio_output
   002_gpio_input
+  003_exti
+  004_nvic
 )
 
 foreach(exp IN LISTS EXPERIMENTS)
