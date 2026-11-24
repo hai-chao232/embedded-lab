@@ -15,3 +15,7 @@
 | board | LED/按键引脚定义等板级封装 | ⬜ |
 | linker script | STM32F446ZE 内存布局（512K Flash / 128K SRAM） | ✅ |
 | printf 重定向 | retarget 到板载 ST-Link 虚拟串口（USART3，PD8/PD9） | ⬜ 属 011 UART 实验 |
+
+## 调试连接注意
+
+003/004 进入 `__WFI()` 后 CPU 会睡眠。`stm32f4x.cfg` 的 `DBGMCU_CR.DBG_SLEEP` 是在 examine-end 才置位的；如果目标已经在 sleep 中，直接 examine 可能失败（`Examination failed` / `reset will not halt`）。因此 `openocd.cfg` 配置了 `connect_assert_srst`：连接时先拉低 SRST，examine 完成后再释放。若换用没有把 SRST 接到目标的调试器/板子，这一行需要重新评估。
