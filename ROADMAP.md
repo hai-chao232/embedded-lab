@@ -61,7 +61,7 @@ P0 **有意不包含**以下工程增强，它们被明确安排到 E1，而不�
 | 002 | gpio_input 按键轮询 | 001 + E1 | 按键 | ✅ |
 | 003 | exti 外部中断 | 002 | 按键 + LED | ✅ |
 | 004 | nvic 优先级与抢占 | 003 | 按键 + LED | ✅ |
-| 005 | timer 基本定时中断 | 004 + Clock checkpoint | LED | ⬜ |
+| 005 | timer 基本定时中断 | 004 + Clock checkpoint | LED | ✅ |
 | 006 | timer PWM 呼吸灯 | 005 | LED + LA | ⬜ |
 | 007 | timer 输入捕获测频 | 006 | 板2 PWM 输出 + LA | ⬜ |
 | 008 | dma mem2mem 搬运 | 005 | 调试器 | ⬜ |
@@ -109,6 +109,8 @@ E1 是 P0 的工程化补全点：001 已经能生成 ELF，E1 把“构建 → 
 
 ## Clock checkpoint：004 → 005
 
+状态：✅（2026-11-24 上板验收）· 落点 `platform/stm32f446ze/clock/board_clock.{h,c}`。
+
 在 Timer 实验开始之前完成平台时钟基线：
 
 - 理解 HSI / HSE / PLL / AHB / APB 时钟树。
@@ -118,6 +120,16 @@ E1 是 P0 的工程化补全点：001 已经能生成 ELF，E1 把“构建 → 
 - 更新 `SystemCoreClock`。
 - 用可观测手段验证实际频率，而不是只相信寄存器配置。
 - 特别理解 APB prescaler 与 Timer clock 倍频规则。
+
+落地与验收：
+
+- 树：HSE bypass 8 MHz → PLL（M=4 / N=180 / P=2）→ SYSCLK = HCLK = 180 MHz；APB1 /4 = 45 MHz、
+  APB2 /2 = 90 MHz；TIM7CLK = 90 MHz、APB2 定时器 180 MHz；Flash 5 WS + prefetch / I/D cache。
+- 回读：`RCC->PLLCFGR = 0x07402D04`、`RCC->CFGR = 0x0000940A`、`FLASH->ACR = 0x705`、
+  `PWR_CSR.VOSRDY = 1`、`SystemCoreClock = 180000000`。
+- 实测：005 的 `ms_ticks` 10 s 增 10003（1000.3 Hz）；`ARR` 改 1999 后 500.1 Hz，与公式成比例。
+- 踩过的坑：F446 的 `VOS` 只在 PLL 打开后生效（PLL 关闭时稳压器被强制在 scale 3，`VOSRDY` 为 0），
+  顺序必须是 写 `VOS` → 开 PLL → 等 `PLLRDY` → 等 `VOSRDY`。细节见 [platform README](platform/stm32f446ze/README.md)。
 
 Timer / PWM / Capture 之后都以此时钟基线为前提。
 
@@ -155,6 +167,30 @@ E2 的目标是从“在当前开发机上能稳定构建”升级到“仓库�
 - 形成第一版“环境、构建、调试、产物分析”可复现文档。
 
 E2 完成后，第一阶段不仅外设知识闭环，工程基线也完成一次升级。
+
+---
+
+## 板级扩展：第一阶段之后（换板验收）
+
+**时机：014 完成、E2 收尾之后再买。** 第一阶段不引入新板卡，避免工具链 / 文档 / 移植三条线同时分散。
+
+目的不是“多一块板”，而是给 `platform/<board>/` 和板级接口（`led_on()` 这类）制造真实需求：**同一个实验、不同板子，只换 `platform/<board>/`**。（[README_1](README_1.md)）
+
+规则：
+
+- **买即归档**：手册 / 原理图 / 固件库当天进 `docs/board/<board>/`，`docs/board/README.md` 登记；`硬件.md` 只记型号、日期、角色。
+- **顺序不能乱**：同核不同厂 → 不同核同厂 → 不同核不同厂。第一次就上“不同核”，`board_*` 会被 `#ifdef` 和内核对假设污染，那是在做 HAL，不是在划板级边界。
+
+| 轴 | 逼出的边界 | 落点 | 例子 | 时机 |
+|---|---|---|---|---|
+| 同核不同厂 | 外设 / 时钟 / Flash / 文档差异 | `platform/<board>/` | GD32F4xx 一类 vs F446ZE | 014 之后，第一块 |
+| 不同核同厂 | startup / 向量表 / CMSIS / SysTick / 中断模型 | `frameworks/` 或 `common/` | GD32E230（M23）、GD32VF103（RISC-V） | 板级层稳定之后 |
+| 不同核不同厂 | 工具链 / 生态 / 文档 | `frameworks/` + 文档 | RISC-V 或其他生态 | 第三阶段 |
+
+
+不买：ESP32 / RP2040 这类 SDK 优先的板（寄存器被藏起来，与 L1 路线冲突）；STM32F4 的 pin-to-pin 克隆（与 GD 定位重叠、公开资料更弱）；GD32H7（资料与工具链成熟度不足，首次跨厂不踩）。
+
+已有硬件不重复买：`硬件.md` 里已有两块 NUCLEO-F446ZE，007（板2 出 PWM）和 021（CAN 双板对发）的对端已具备；第二阶段真正缺的是 CAN 收发器。
 
 ---
 

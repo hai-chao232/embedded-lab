@@ -30,6 +30,10 @@ target_include_directories(
 
     ${CMAKE_CURRENT_SOURCE_DIR}
 
+    # 板级 clock 模块（Clock checkpoint，004 → 005）：实验只写
+    # #include "board_clock.h"，不出现 PLL / Flash latency / APB 分频。
+    ${CMAKE_CURRENT_SOURCE_DIR}/clock
+
     ${STM32CUBE_F4_DIR}/Drivers/CMSIS/Include
     ${STM32F4_CMSIS_DEVICE_DIR}/Include
 )
@@ -55,6 +59,11 @@ target_compile_definitions(
 target_sources(
     platform_stm32f446ze
     INTERFACE
+
+    # 板级时钟基线：HSE bypass 8 MHz → PLL → SYSCLK 180 MHz，APB1 /4、APB2 /2。
+    # 作为 INTERFACE 源文件，每个链接本平台的实验都会编译它；不调用
+    # board_clock_init() 的实验（001–004 用 HSI 16 MHz）由 --gc-sections 回收。
+    ${CMAKE_CURRENT_SOURCE_DIR}/clock/board_clock.c
 
     ${STM32F4_CMSIS_DEVICE_DIR}/Source/Templates/system_stm32f4xx.c
     ${STM32F4_CMSIS_DEVICE_DIR}/Source/Templates/gcc/startup_stm32f446xx.s

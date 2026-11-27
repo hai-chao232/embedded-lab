@@ -28,6 +28,7 @@ set(EXPERIMENTS
   002_gpio_input
   003_exti
   004_nvic
+  005_timer_tick
 )
 
 foreach(exp IN LISTS EXPERIMENTS)
